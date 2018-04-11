@@ -27,7 +27,7 @@ custom:
       - '/index.html'
 resources:
   Resources:
-    CanvasUICDN:
+    CDN:
       Type: "AWS::CloudFront::Distribution"
       Properties:
         ....
@@ -35,7 +35,7 @@ resources:
     CDNDistributionId:
       Description: CDN distribution id.
       Value:
-        Ref: CanvasUICDN
+        Ref: CDN
 ```
 
 ## Usage
