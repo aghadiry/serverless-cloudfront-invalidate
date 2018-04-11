@@ -31,9 +31,38 @@ class CloudfrontInvalidate {
         let cloudfront = new AWS.CloudFront({
             credentials: awsCredentials.credentials
         });
-        let reference = randomstring.generate(16); 
+        let reference = randomstring.generate(16);
+        let distributionId = cloudfrontInvalidate.distributionId;
+        if (!distributionId) {
+            if (!cloudfrontInvalidate.distributionIdKey) {
+                cli.consoleLog('distributionId or distributionIdKey is required');
+                return;
+            }
+            // get the id from the out of stack.
+            const cfn = new AWS.CloudFormation({
+                credentials: awsCredentials.credentials
+            });
+            const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
+            cfn.describeStacks({ StackName: stackName })
+            .then(result => {
+                if(result) {
+                    const outputs = result.Stacks[0].Outputs;
+                    outputs.forEach(output => {
+                      if (output.OutputKey === cloudfrontInvalidate.distributionIdKey) {
+                        distributionId = output.OutputValue;
+                        break;
+                      }
+                    });
+                }
+            })
+            .catch(error => {
+                cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
+                return;
+            });
+
+        }
         let params = {
-            DistributionId: cloudfrontInvalidate.distributionId, /* required */
+            DistributionId: distributionId, /* required */
             InvalidationBatch: { /* required */
                 CallerReference: reference, /* required */
                 Paths: { /* required */
