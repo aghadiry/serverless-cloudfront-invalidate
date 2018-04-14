@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rrahul963/serverless-cloudfront-invalidate.git"
+    "url": "git+https://github.com/aghadiry/serverless-cloudfront-invalidate.git"
   },
-  "author": "Rahul Tulsian",
+  "author": "Amir Ghadiry",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/rrahul/serverless-cloudfront-invalidate/issues"
+    "url": "https://github.com/aghadiry/serverless-cloudfront-invalidate/issues"
   },
-  "homepage": "https://github.com/rrahul963/serverless-cloudfront-invalidate#readme",
+  "homepage": "https://github.com/aghadiry/serverless-cloudfront-invalidate#readme",
   "dependencies": {
     "chalk": "^2.3.1",
     "randomstring": "^1.1.5"
