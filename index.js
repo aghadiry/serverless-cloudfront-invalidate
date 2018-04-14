@@ -38,7 +38,7 @@ class CloudfrontInvalidate {
         cli.consoleLog('distributionId or distributionIdKey is required');
         return;
       }
-      // get the id from the out of stack.
+      // get the id from the output of stack.
       const cfn = new AWS.CloudFormation({
         credentials: awsCredentials.credentials,
         region: this.serverless.getProvider('aws').getRegion()
@@ -76,7 +76,6 @@ class CloudfrontInvalidate {
         });
       })
       .catch(error => {
-        console.log(JSON.stringify(error));
         cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
         return;
       });
