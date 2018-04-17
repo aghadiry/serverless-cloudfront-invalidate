@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/aghadiry/serverless-cloudfront-invalidate#readme",
   "dependencies": {
-    "@types/aws-sdk": "^2.7.0",
     "aws-sdk": "^2.224.1",
     "chalk": "^2.3.1",
     "randomstring": "^1.1.5"
