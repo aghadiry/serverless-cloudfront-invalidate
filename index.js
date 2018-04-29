@@ -44,47 +44,47 @@ class CloudfrontInvalidate {
 
       cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
     }
-      // get the id from the output of stack.
-      const cfn = new AWS.CloudFormation({
-        credentials: awsCredentials.credentials,
-        region: this.serverless.getProvider('aws').getRegion()
-      });
-      const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
-      cfn.describeStacks({ StackName: stackName }).promise()
-      .then(result => {
-        if (result) {
-          const outputs = result.Stacks[0].Outputs;
-          outputs.forEach(output => {
-            if (output.OutputKey === cloudfrontInvalidate.distributionIdKey) {
-              distributionId = output.OutputValue;
-            }
-          });
-        }
-      })
-      .then(() => {
-        let params = {
-          DistributionId: distributionId, /* required */
-          InvalidationBatch: { /* required */
-            CallerReference: reference, /* required */
-            Paths: { /* required */
-                Quantity: cloudfrontInvalidate.items.length, /* required */
-                Items: cloudfrontInvalidate.items
-            }
-          }
-        };
-        cloudfront.createInvalidation(params, function (err, data) {
-          if (!err){
-            cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
-          } else{
-            console.log(JSON.stringify(err));
-            cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
+    // get the id from the output of stack.
+    const cfn = new AWS.CloudFormation({
+      credentials: awsCredentials.credentials,
+      region: this.serverless.getProvider('aws').getRegion()
+    });
+    const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
+    cfn.describeStacks({ StackName: stackName }).promise()
+    .then(result => {
+      if (result) {
+        const outputs = result.Stacks[0].Outputs;
+        outputs.forEach(output => {
+          if (output.OutputKey === cloudfrontInvalidate.distributionIdKey) {
+            distributionId = output.OutputValue;
           }
         });
-      })
-      .catch(error => {
-        cli.consoleLog(error.toString());
-        return;
+      }
+    })
+    .then(() => {
+      let params = {
+        DistributionId: distributionId, /* required */
+        InvalidationBatch: { /* required */
+          CallerReference: reference, /* required */
+          Paths: { /* required */
+              Quantity: cloudfrontInvalidate.items.length, /* required */
+              Items: cloudfrontInvalidate.items
+          }
+        }
+      };
+      cloudfront.createInvalidation(params, function (err, data) {
+        if (!err){
+          cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
+        } else{
+          console.log(JSON.stringify(err));
+          cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
+        }
       });
+    })
+    .catch(error => {
+      cli.consoleLog(error.toString());
+      return;
+    });
   }
 }
 
