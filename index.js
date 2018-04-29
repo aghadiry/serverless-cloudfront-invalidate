@@ -33,11 +33,17 @@ class CloudfrontInvalidate {
     });
     let reference = randomstring.generate(16);
     let distributionId = cloudfrontInvalidate.distributionId;
-    if (!distributionId) {
+    
+    if (distributionId) {
+      cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
+    }else{
       if (!cloudfrontInvalidate.distributionIdKey) {
         cli.consoleLog('distributionId or distributionIdKey is required');
         return;
       }
+
+      cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
+    }
       // get the id from the output of stack.
       const cfn = new AWS.CloudFormation({
         credentials: awsCredentials.credentials,
@@ -76,10 +82,9 @@ class CloudfrontInvalidate {
         });
       })
       .catch(error => {
-        cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
+        cli.consoleLog(error.toString());
         return;
       });
-    }
   }
 }
 
