@@ -31,7 +31,7 @@ resources:
       Type: "AWS::CloudFront::Distribution"
       Properties:
         ....
-  Output:
+  Outputs:
     CDNDistributionId:
       Description: CDN distribution id.
       Value:
