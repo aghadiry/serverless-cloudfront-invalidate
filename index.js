@@ -68,6 +68,7 @@ class CloudfrontInvalidate {
       } else{
         console.log(JSON.stringify(err));
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
+        throw err;
       }
     });
   }
