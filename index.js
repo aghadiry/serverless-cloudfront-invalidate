@@ -12,7 +12,6 @@ class CloudfrontInvalidate {
     this.serverless = serverless;
     this.options = options || {};
 
-    console.log(this.options);
     if (this.options.cacert) {
       this.handleCaCert(this.options.cacert);
     }
