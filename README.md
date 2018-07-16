@@ -42,3 +42,13 @@ resources:
 
 Run `sls deploy`. After the deployment a Cloudfront Invalidation will be started.
 Run `sls cloudfrontInvalidate` to do a standalone invalidation
+
+### Options
+
+The following options are supported:
+
+##### cacert
+Used to specify a cacert file for the AWS commands.  This is useful for self signed certificates.  You will need to specify the self signed cert in 2 places, one for the serverless execution and one for the AWS execution.
+
+  - Use `export cafile=<path to cert file>` to use self signed cert for serverless execution
+  - Run `sls cloudfrontInvalidate --cacert=<path to ca cert file>` to use self signed cert for AWS execution
