@@ -62,15 +62,16 @@ class CloudfrontInvalidate {
         }
       }
     };
-    cloudfront.createInvalidation(params, function (err, data) {
-      if (!err){
+    return cloudfront.createInvalidation(params).promise().then(
+      () => {
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
-      } else{
+      },
+      err => {
         console.log(JSON.stringify(err));
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
         throw err;
       }
-    });
+    );
   }
 
   invalidate() {
@@ -81,26 +82,25 @@ class CloudfrontInvalidate {
     const awsCredentials = this.serverless.getProvider('aws').getCredentials();
 
     if (distributionId) {
-
       cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
-      this.createInvalidation(distributionId, reference, awsCredentials);
+      return this.createInvalidation(distributionId, reference, awsCredentials);
+    } 
 
-    } else {
+    if (!cloudfrontInvalidate.distributionIdKey) {
+      cli.consoleLog('distributionId or distributionIdKey is required');
+      return;
+    }
 
-      if (!cloudfrontInvalidate.distributionIdKey) {
-        cli.consoleLog('distributionId or distributionIdKey is required');
-        return;
-      }
+    cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
 
-      cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
+    // get the id from the output of stack.
+    const cfn = new AWS.CloudFormation({
+      credentials: awsCredentials.credentials,
+      region: this.serverless.getProvider('aws').getRegion()
+    });
+    const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
 
-      // get the id from the output of stack.
-      const cfn = new AWS.CloudFormation({
-        credentials: awsCredentials.credentials,
-        region: this.serverless.getProvider('aws').getRegion()
-      });
-      const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
-      cfn.describeStacks({ StackName: stackName }).promise()
+    return cfn.describeStacks({ StackName: stackName }).promise()
       .then(result => {
         if (result) {
           const outputs = result.Stacks[0].Outputs;
@@ -111,14 +111,11 @@ class CloudfrontInvalidate {
           });
         }
       })
-      .then(() => {
-        this.createInvalidation(distributionId, reference, awsCredentials);
-      })
+      .then(() => this.createInvalidation(distributionId, reference, awsCredentials))
       .catch(error => {
         cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
         return;
       });
-    }
   }
 }
 
