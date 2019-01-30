@@ -1,4 +1,5 @@
 # serverless-cloudfront-invalidate
+
 Serverless plugin that allows you to invalidate Cloudfront Cache
 
 ## Install
@@ -17,20 +18,21 @@ Add the plugin to your serverless.yml file as the last plugin
 plugins:
   - serverless-cloudfront-invalidate # add as the last plugin
 ```
-If the CDN is created as part of same serverless.yml then you can specify the ```distributionIdKey``` and output the DomainId (as shown in the sample below).
+
+If the CDN is created as part of same serverless.yml then you can specify the `distributionIdKey` and output the DomainId (as shown in the sample below).
+
 ```yaml
 custom:
   cloudfrontInvalidate:
-    distributionId: 'CLOUDFRONT_DIST_ID' #conditional, distributionId or distributionIdKey is required.
-    distributionIdKey: 'CDNDistributionId' #conditional, distributionId or distributionIdKey is required.
+    distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
+    distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
     items: # one or more paths required
-      - '/index.html'
+      - "/index.html"
 resources:
   Resources:
     CDN:
       Type: "AWS::CloudFront::Distribution"
-      Properties:
-        ....
+      Properties: ....
   Outputs:
     CDNDistributionId:
       Description: CDN distribution id.
@@ -48,7 +50,26 @@ Run `sls cloudfrontInvalidate` to do a standalone invalidation
 The following options are supported:
 
 ##### cacert
-Used to specify a cacert file for the AWS commands.  This is useful for self signed certificates.  You will need to specify the self signed cert in 2 places, one for the serverless execution and one for the AWS execution.
 
-  - Use `export cafile=<path to cert file>` to use self signed cert for serverless execution
-  - Run `sls cloudfrontInvalidate --cacert=<path to ca cert file>` to use self signed cert for AWS execution
+Used to specify a cacert file for the AWS commands. This is useful for self signed certificates. You will need to specify the self signed cert in 2 places, one for the serverless execution and one for the AWS execution.
+
+- Use `export cafile=<path to cert file>` to use self signed cert for serverless execution
+- Run `sls cloudfrontInvalidate --cacert=<path to ca cert file>` to use self signed cert for AWS execution
+
+##### Proxy
+
+You can communicate with AWS even if you are using a proxy by setting the proxy to the environment variable of the execution environment.
+
+- Correspond to the following environment variable names
+
+  - proxy
+  - HTTP_PROXY
+  - http_proxy
+  - HTTPS_PROXY
+  - https_proxy
+
+- exsample
+
+  windows: `set HTTP_PROXY=http://localhost:8080`
+
+  mac: `export HTTP_PROXY=http://localhost:8080`
