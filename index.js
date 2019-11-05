@@ -98,7 +98,7 @@ class CloudfrontInvalidate {
       credentials: awsCredentials.credentials,
       region: this.serverless.getProvider('aws').getRegion()
     });
-    const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
+    const stackName = this.serverless.getProvider('aws').naming.getStackName()
 
     return cfn.describeStacks({ StackName: stackName }).promise()
       .then(result => {
