@@ -5,12 +5,23 @@ const randomstring = require('randomstring');
 const chalk = require('chalk');
 const fs = require('fs');
 const https = require('https');
+const proxy = require('proxy-agent');
 
 class CloudfrontInvalidate {
 
   constructor(serverless, options) {
     this.serverless = serverless;
     this.options = options || {};
+    this.proxyURL =
+      process.env.proxy ||
+      process.env.HTTP_PROXY ||
+      process.env.http_proxy ||
+      process.env.HTTPS_PROXY ||
+      process.env.https_proxy;
+
+    if (this.proxyURL) {
+      this.setProxy(this.proxyURL);
+    }
 
     if (this.options.cacert) {
       this.handleCaCert(this.options.cacert);
@@ -29,6 +40,12 @@ class CloudfrontInvalidate {
       'after:deploy:deploy': this.invalidate.bind(this),
       'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
     };
+  }
+
+  setProxy(proxyURL) {
+    AWS.config.update({
+      httpOptions: { agent: proxy(proxyURL) },
+    });
   }
 
   handleCaCert(caCert) {
@@ -98,7 +115,7 @@ class CloudfrontInvalidate {
       credentials: awsCredentials.credentials,
       region: this.serverless.getProvider('aws').getRegion()
     });
-    const stackName = `${this.serverless.service.getServiceName()}-${this.serverless.getProvider('aws').getStage()}`
+    const stackName = this.serverless.getProvider('aws').naming.getStackName()
 
     return cfn.describeStacks({ StackName: stackName }).promise()
       .then(result => {
