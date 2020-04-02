@@ -66,7 +66,7 @@ class CloudfrontInvalidate {
     const cli = this.serverless.cli;
     const cloudfrontInvalidateItems = this.serverless.service.custom.cloudfrontInvalidate.items;
     const cloudfront = new AWS.CloudFront({
-      credentials: awsCredentials.credentials
+      credentials: awsCredentials
     });
 
     const params = {
@@ -96,12 +96,17 @@ class CloudfrontInvalidate {
     let cloudfrontInvalidate = this.serverless.service.custom.cloudfrontInvalidate;
     let reference = randomstring.generate(16);
     let distributionId = cloudfrontInvalidate.distributionId;
-    const awsCredentials = this.serverless.getProvider('aws').getCredentials();
-
+    let awsCredentials = this.serverless.getProvider('aws').getCredentials();
+    if (awsCredentials && awsCredentials.credentials) {
+      // older versions of AWS/serverless wrapped the AWS credentials within a
+      // "credentials" sub object, new versions do not. So handle
+      // both scenarios here getting just the credentials that are needed.
+      awsCredentials = awsCredentials.credentials
+    }
     if (distributionId) {
       cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
       return this.createInvalidation(distributionId, reference, awsCredentials);
-    } 
+    }
 
     if (!cloudfrontInvalidate.distributionIdKey) {
       cli.consoleLog('distributionId or distributionIdKey is required');
@@ -112,7 +117,7 @@ class CloudfrontInvalidate {
 
     // get the id from the output of stack.
     const cfn = new AWS.CloudFormation({
-      credentials: awsCredentials.credentials,
+      credentials: awsCredentials,
       region: this.serverless.getProvider('aws').getRegion()
     });
     const stackName = this.serverless.getProvider('aws').naming.getStackName()
