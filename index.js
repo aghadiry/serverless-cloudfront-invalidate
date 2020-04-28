@@ -17,7 +17,7 @@ class CloudfrontInvalidate {
       process.env.http_proxy ||
       process.env.HTTPS_PROXY ||
       process.env.https_proxy;
-    this.provider = 'aws'
+    this.provider = 'aws';
     this.aws = this.serverless.getProvider('aws');
 
     if (this.proxyURL) {
