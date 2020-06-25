@@ -1,6 +1,5 @@
 'use strict';
 
-const AWS = require('aws-sdk');
 const randomstring = require('randomstring');
 const chalk = require('chalk');
 const fs = require('fs');
@@ -18,6 +17,8 @@ class CloudfrontInvalidate {
       process.env.http_proxy ||
       process.env.HTTPS_PROXY ||
       process.env.https_proxy;
+    this.provider = 'aws';
+    this.aws = this.serverless.getProvider('aws');
 
     if (this.proxyURL) {
       this.setProxy(this.proxyURL);
@@ -43,7 +44,7 @@ class CloudfrontInvalidate {
   }
 
   setProxy(proxyURL) {
-    AWS.config.update({
+    this.aws.sdk.config.update({
       httpOptions: { agent: proxy(proxyURL) },
     });
   }
@@ -55,19 +56,16 @@ class CloudfrontInvalidate {
       throw new Error("Supplied cacert option to a file that does not exist: " + caCert);
     }
 
-    AWS.config.update({
+    this.aws.sdk.config.update({
       httpOptions: { agent: new https.Agent({ ca: fs.readFileSync(caCert)}) }
     });
 
     cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('ca cert handling enabled')}`);
   }
 
-  createInvalidation(distributionId, reference, awsCredentials) {
+  createInvalidation(distributionId, reference) {
     const cli = this.serverless.cli;
     const cloudfrontInvalidateItems = this.serverless.service.custom.cloudfrontInvalidate.items;
-    const cloudfront = new AWS.CloudFront({
-      credentials: awsCredentials.credentials
-    });
 
     const params = {
       DistributionId: distributionId, /* required */
@@ -79,7 +77,7 @@ class CloudfrontInvalidate {
         }
       }
     };
-    return cloudfront.createInvalidation(params).promise().then(
+    return this.aws.request('CloudFront', 'createInvalidation', params).then(
       () => {
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
       },
@@ -96,12 +94,10 @@ class CloudfrontInvalidate {
     let cloudfrontInvalidate = this.serverless.service.custom.cloudfrontInvalidate;
     let reference = randomstring.generate(16);
     let distributionId = cloudfrontInvalidate.distributionId;
-    const awsCredentials = this.serverless.getProvider('aws').getCredentials();
-
     if (distributionId) {
       cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
-      return this.createInvalidation(distributionId, reference, awsCredentials);
-    } 
+      return this.createInvalidation(distributionId, reference);
+    }
 
     if (!cloudfrontInvalidate.distributionIdKey) {
       cli.consoleLog('distributionId or distributionIdKey is required');
@@ -111,13 +107,9 @@ class CloudfrontInvalidate {
     cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
 
     // get the id from the output of stack.
-    const cfn = new AWS.CloudFormation({
-      credentials: awsCredentials.credentials,
-      region: this.serverless.getProvider('aws').getRegion()
-    });
     const stackName = this.serverless.getProvider('aws').naming.getStackName()
 
-    return cfn.describeStacks({ StackName: stackName }).promise()
+    return this.aws.request('CloudFormation', 'describeStacks',{ StackName: stackName })
       .then(result => {
         if (result) {
           const outputs = result.Stacks[0].Outputs;
@@ -128,7 +120,7 @@ class CloudfrontInvalidate {
           });
         }
       })
-      .then(() => this.createInvalidation(distributionId, reference, awsCredentials))
+      .then(() => this.createInvalidation(distributionId, reference))
       .catch(error => {
         cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
         return;
