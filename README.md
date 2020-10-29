@@ -29,7 +29,7 @@ custom:
       items: # one or more paths required
         - "/index.html"
       stage: "dev"  # conditional, the stage that this cloudfront invalidation should be created
-            # this should match the provider's stage you declared, e.g. "dev" but not "development" in this case
+            # this should match the provider's stage you declared, e.g. "dev" but not "prod" in this case
             # an invalidation for this distribution will be created when executing `sls deploy --stage dev`
     - distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
       distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
