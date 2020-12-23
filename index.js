@@ -91,6 +91,10 @@ class CloudfrontInvalidate {
 
   invalidate() {
     const cli = this.serverless.cli;
+    if (this.options.noDeploy) {
+      cli.consoleLog('skipping invalidation due to noDeploy option');
+      return;
+    }
     let cloudfrontInvalidate = this.serverless.service.custom.cloudfrontInvalidate;
     let reference = randomstring.generate(16);
     let distributionId = cloudfrontInvalidate.distributionId;
