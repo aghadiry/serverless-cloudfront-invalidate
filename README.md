@@ -69,7 +69,7 @@ You can communicate with AWS even if you are using a proxy by setting the proxy 
   - HTTPS_PROXY
   - https_proxy
 
-- exsample
+- example
 
   windows: `set HTTP_PROXY=http://localhost:8080`
 
