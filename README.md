@@ -28,6 +28,7 @@ custom:
     distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
     items: # one or more paths required
       - "/index.html"
+    autoInvalidate: true # Can be set to false to avoid automatic invalidation after the deployment. Useful if you want to manually trigger the invalidation later. Defaults to true.
 resources:
   Resources:
     CDN:
