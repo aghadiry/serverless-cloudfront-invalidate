@@ -26,6 +26,7 @@ custom:
   cloudfrontInvalidate:
     - distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
       distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
+      autoInvalidate: true # Can be set to false to avoid automatic invalidation after the deployment. Useful if you want to manually trigger the invalidation later. Defaults to true.
       items: # one or more paths required
         - "/index.html"
       stage: "dev"  # conditional, the stage that this cloudfront invalidation should be created
@@ -76,7 +77,7 @@ You can communicate with AWS even if you are using a proxy by setting the proxy 
   - HTTPS_PROXY
   - https_proxy
 
-- exsample
+- example
 
   windows: `set HTTP_PROXY=http://localhost:8080`
 

@@ -38,9 +38,12 @@ class CloudfrontInvalidate {
     };
 
     this.hooks = {
-      'after:deploy:deploy': this.invalidate.bind(this),
       'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
     };
+
+    if (serverless.service.custom.cloudfrontInvalidate.autoInvalidate !== false) {
+      this.hooks['after:deploy:deploy'] = this.invalidate.bind(this)
+    }
   }
 
   setProxy(proxyURL) {
@@ -82,7 +85,7 @@ class CloudfrontInvalidate {
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
       },
       err => {
-        console.log(JSON.stringify(err));
+        cli.consoleLog(JSON.stringify(err));
         cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
         throw err;
       }
