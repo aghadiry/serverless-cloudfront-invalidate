@@ -24,11 +24,19 @@ If the CDN is created as part of same serverless.yml then you can specify the `d
 ```yaml
 custom:
   cloudfrontInvalidate:
-    distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
-    distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
-    items: # one or more paths required
-      - "/index.html"
-    autoInvalidate: true # Can be set to false to avoid automatic invalidation after the deployment. Useful if you want to manually trigger the invalidation later. Defaults to true.
+    - distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
+      distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
+      autoInvalidate: true # Can be set to false to avoid automatic invalidation after the deployment. Useful if you want to manually trigger the invalidation later. Defaults to true.
+      items: # one or more paths required
+        - "/index.html"
+      stage: "dev"  # conditional, the stage that this cloudfront invalidation should be created
+            # this should match the provider's stage you declared, e.g. "dev" but not "prod" in this case
+            # an invalidation for this distribution will be created when executing `sls deploy --stage dev`
+    - distributionId: "CLOUDFRONT_DIST_ID" #conditional, distributionId or distributionIdKey is required.
+      distributionIdKey: "CDNDistributionId" #conditional, distributionId or distributionIdKey is required.
+      items: # one or more paths required
+        - "/index.html"
+      # `stage` is omitted, an invalidation will be created for this distribution at all stages
 resources:
   Resources:
     CDN:
