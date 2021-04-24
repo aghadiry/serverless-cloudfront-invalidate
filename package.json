@@ -1,6 +1,6 @@
 {
   "name": "serverless-cloudfront-invalidate",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Serverless plugin that allows you to invalidate Cloudfront Cache",
   "main": "index.js",
   "scripts": {
