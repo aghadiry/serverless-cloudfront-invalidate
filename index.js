@@ -39,11 +39,8 @@ class CloudfrontInvalidate {
 
     this.hooks = {
       'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
+      'after:deploy:deploy': this.invalidate.bind(this),
     };
-
-    if (serverless.service.custom.cloudfrontInvalidate.autoInvalidate !== false) {
-      this.hooks['after:deploy:deploy'] = this.invalidate.bind(this)
-    }
   }
 
   setProxy(proxyURL) {
@@ -100,7 +97,9 @@ class CloudfrontInvalidate {
       return;
     }
 
-    this.serverless.service.custom.cloudfrontInvalidate.forEach(element => {
+    const invalidationPromises = this.serverless.service.custom.cloudfrontInvalidate.map(element => {
+      const autoInvalidate = element.autoInvalidate !== false;
+
       let cloudfrontInvalidate = element;
       let reference = randomstring.generate(16);
       let distributionId = cloudfrontInvalidate.distributionId;
@@ -112,6 +111,12 @@ class CloudfrontInvalidate {
 
       if (distributionId) {
         cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
+
+        if (autoInvalidate === false) {
+          cli.consoleLog(`Skipping invalidation for the distributionId "${distributionId}" as autoInvalidate is set to false.`);
+          return;
+        }
+
         return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
       }
 
@@ -136,12 +141,20 @@ class CloudfrontInvalidate {
             });
           }
         })
-        .then(() => this.createInvalidation(distributionId, reference, cloudfrontInvalidate))
-        .catch(error => {
+        .then(() => {
+          if (autoInvalidate === false) {
+            cli.consoleLog(`Skipping invalidation for the distributionId "${distributionId}" as autoInvalidate is set to false.`);
+            return;
+          }
+
+          return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
+        })
+        .catch(() => {
           cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
-          return;
         });
     });
+
+    return Promise.all(invalidationPromises);
   }
 }
 
