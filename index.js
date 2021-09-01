@@ -39,7 +39,7 @@ class CloudfrontInvalidate {
 
     this.hooks = {
       'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
-      'after:deploy:deploy': this.invalidate.bind(this),
+      'after:deploy:deploy': this.afterDeploy.bind(this),
     };
   }
 
@@ -89,7 +89,7 @@ class CloudfrontInvalidate {
     );
   }
 
-  invalidate() {
+  invalidateElements(elements) {
     const cli = this.serverless.cli;
 
     if (this.options.noDeploy) {
@@ -97,25 +97,18 @@ class CloudfrontInvalidate {
       return;
     }
 
-    const invalidationPromises = this.serverless.service.custom.cloudfrontInvalidate.map(element => {
-      const autoInvalidate = element.autoInvalidate !== false;
-
+    const invalidationPromises = elements.map(element => {
       let cloudfrontInvalidate = element;
       let reference = randomstring.generate(16);
       let distributionId = cloudfrontInvalidate.distributionId;
       let stage = cloudfrontInvalidate.stage;
 
-      if (stage !== undefined && stage != `${this.serverless.service.provider.stage}`) {
+      if (stage !== undefined && stage !== `${this.serverless.service.provider.stage}`) {
         return;
       }
 
       if (distributionId) {
         cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
-
-        if (autoInvalidate === false) {
-          cli.consoleLog(`Skipping invalidation for the distributionId "${distributionId}" as autoInvalidate is set to false.`);
-          return;
-        }
 
         return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
       }
@@ -141,20 +134,31 @@ class CloudfrontInvalidate {
             });
           }
         })
-        .then(() => {
-          if (autoInvalidate === false) {
-            cli.consoleLog(`Skipping invalidation for the distributionId "${distributionId}" as autoInvalidate is set to false.`);
-            return;
-          }
-
-          return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
-        })
+        .then(() => this.createInvalidation(distributionId, reference, cloudfrontInvalidate))
         .catch(() => {
           cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
         });
     });
 
     return Promise.all(invalidationPromises);
+  }
+
+  afterDeploy() {
+    const elementsToInvalidate = this.serverless.service.custom.cloudfrontInvalidate
+      .filter((element) => {
+        if (element.autoInvalidate !== false) {
+          return true;
+        }
+
+        this.serverless.cli.consoleLog(`Will skip invalidation for the distributionId "${element.distributionId || element.distributionIdKey}" as autoInvalidate is set to false.`);
+        return false;
+      });
+
+    return this.invalidateElements(elementsToInvalidate);
+  }
+
+  invalidate() {
+    return this.invalidateElements(this.serverless.service.custom.cloudfrontInvalidate);
   }
 }
 
