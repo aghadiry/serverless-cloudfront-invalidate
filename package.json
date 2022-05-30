@@ -1,5 +1,5 @@
 {
-  "name": "serverless-cloudfront-invalidate",
+  "name": "@everafter/serverless-cloudfront-invalidate",
   "version": "1.11.0",
   "description": "Serverless plugin that allows you to invalidate Cloudfront Cache",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aghadiry/serverless-cloudfront-invalidate.git"
+    "url": "git+https://github.com/everafterai/serverless-cloudfront-invalidate.git"
   },
   "author": "Amir Ghadiry",
   "license": "MIT",
