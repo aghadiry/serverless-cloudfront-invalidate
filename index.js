@@ -101,6 +101,7 @@ class CloudfrontInvalidate {
       let cloudfrontInvalidate = element;
       let reference = randomstring.generate(16);
       let distributionId = cloudfrontInvalidate.distributionId;
+      const containsOrigin = cloudfrontInvalidate.containsOrigin;
       let stage = cloudfrontInvalidate.stage;
 
       if (stage !== undefined && stage !== `${this.serverless.service.provider.stage}`) {
@@ -112,9 +113,30 @@ class CloudfrontInvalidate {
 
         return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
       }
+      if (containsOrigin){
+        cli.consoleLog(`ContainsOrigin: ${chalk.yellow(containsOrigin)}`);
+        this.aws.request('CloudFront', 'listDistributions').then(
+          (data) => {
+            const distributions = data.DistributionList.Items;
+            distributions.array.forEach(distribution => {
+              const foundDistribution = distribution.Origins.Items.find(origin => {
+                return origin.DomainName === containsOrigin;
+              });
+
+              if (foundDistribution) {
+                cli.consoleLog(`Going to invalidate distributionId: ${chalk.yellow(distribution.Id)}`);
+                return this.createInvalidation(distribution.Id, reference, cloudfrontInvalidate);
+              }
+          }
+        ).catch(
+          (err) => {
+            cli.consoleLog(JSON.stringify(err));
+          }
+        );
+      }
 
       if (!cloudfrontInvalidate.distributionIdKey) {
-        cli.consoleLog('distributionId or distributionIdKey is required');
+        cli.consoleLog('distributionId, containsOrigin or distributionIdKey is required');
         return;
       }
 
