@@ -7,182 +7,198 @@ const https = require('https');
 const proxy = require('proxy-agent');
 
 class CloudfrontInvalidate {
+	constructor(serverless, options) {
+		this.serverless = serverless;
+		this.options = options || {};
+		this.proxyURL =
+			process.env.proxy ||
+			process.env.HTTP_PROXY ||
+			process.env.http_proxy ||
+			process.env.HTTPS_PROXY ||
+			process.env.https_proxy;
+		this.provider = 'aws';
+		this.aws = this.serverless.getProvider('aws');
 
-  constructor(serverless, options) {
-    this.serverless = serverless;
-    this.options = options || {};
-    this.proxyURL =
-      process.env.proxy ||
-      process.env.HTTP_PROXY ||
-      process.env.http_proxy ||
-      process.env.HTTPS_PROXY ||
-      process.env.https_proxy;
-    this.provider = 'aws';
-    this.aws = this.serverless.getProvider('aws');
+		if (this.proxyURL) {
+			this.setProxy(this.proxyURL);
+		}
 
-    if (this.proxyURL) {
-      this.setProxy(this.proxyURL);
-    }
+		if (this.options.cacert) {
+			this.handleCaCert(this.options.cacert);
+		}
 
-    if (this.options.cacert) {
-      this.handleCaCert(this.options.cacert);
-    }
+		this.commands = {
+			cloudfrontInvalidate: {
+				usage: 'Invalidate Cloudfront Cache',
+				lifecycleEvents: ['invalidate'],
+			},
+		};
 
-    this.commands = {
-      cloudfrontInvalidate: {
-        usage: "Invalidate Cloudfront Cache",
-        lifecycleEvents: [
-          'invalidate'
-        ]
-      }
-    };
+		this.hooks = {
+			'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
+			'after:deploy:deploy': this.afterDeploy.bind(this),
+		};
+	}
 
-    this.hooks = {
-      'cloudfrontInvalidate:invalidate': this.invalidate.bind(this),
-      'after:deploy:deploy': this.afterDeploy.bind(this),
-    };
-  }
+	setProxy(proxyURL) {
+		this.aws.sdk.config.update({
+			httpOptions: { agent: proxy(proxyURL) },
+		});
+	}
 
-  setProxy(proxyURL) {
-    this.aws.sdk.config.update({
-      httpOptions: { agent: proxy(proxyURL) },
-    });
-  }
+	handleCaCert(caCert) {
+		const cli = this.serverless.cli;
 
-  handleCaCert(caCert) {
-    const cli = this.serverless.cli;
+		if (!fs.existsSync(caCert)) {
+			throw new Error('Supplied cacert option to a file that does not exist: ' + caCert);
+		}
 
-    if (!fs.existsSync(caCert)) {
-      throw new Error("Supplied cacert option to a file that does not exist: " + caCert);
-    }
+		this.aws.sdk.config.update({
+			httpOptions: { agent: new https.Agent({ ca: fs.readFileSync(caCert) }) },
+		});
 
-    this.aws.sdk.config.update({
-      httpOptions: { agent: new https.Agent({ ca: fs.readFileSync(caCert) }) }
-    });
+		cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('ca cert handling enabled')}`);
+	}
 
-    cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('ca cert handling enabled')}`);
-  }
+	createInvalidation(distributionId, reference, cloudfrontInvalidate) {
+		const cli = this.serverless.cli;
+		const cloudfrontInvalidateItems = cloudfrontInvalidate.items;
 
-  createInvalidation(distributionId, reference, cloudfrontInvalidate) {
-    const cli = this.serverless.cli;
-    const cloudfrontInvalidateItems = cloudfrontInvalidate.items;
+		const params = {
+			DistributionId: distributionId /* required */,
+			InvalidationBatch: {
+				/* required */ CallerReference: reference /* required */,
+				Paths: {
+					/* required */ Quantity: cloudfrontInvalidateItems.length /* required */,
+					Items: cloudfrontInvalidateItems,
+				},
+			},
+		};
+		return this.aws.request('CloudFront', 'createInvalidation', params).then(
+			() => {
+				cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
+			},
+			(err) => {
+				cli.consoleLog(JSON.stringify(err));
+				cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
+				throw err;
+			}
+		);
+	}
 
-    const params = {
-      DistributionId: distributionId, /* required */
-      InvalidationBatch: { /* required */
-        CallerReference: reference, /* required */
-        Paths: { /* required */
-          Quantity: cloudfrontInvalidateItems.length, /* required */
-          Items: cloudfrontInvalidateItems
-        }
-      }
-    };
-    return this.aws.request('CloudFront', 'createInvalidation', params).then(
-      () => {
-        cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation started')}`);
-      },
-      err => {
-        cli.consoleLog(JSON.stringify(err));
-        cli.consoleLog(`CloudfrontInvalidate: ${chalk.yellow('Invalidation failed')}`);
-        throw err;
-      }
-    );
-  }
+	invalidateElements(elements) {
+		const cli = this.serverless.cli;
 
-  invalidateElements(elements) {
-    const cli = this.serverless.cli;
+		if (this.options.noDeploy) {
+			cli.consoleLog('skipping invalidation due to noDeploy option');
+			return;
+		}
 
-    if (this.options.noDeploy) {
-      cli.consoleLog('skipping invalidation due to noDeploy option');
-      return;
-    }
+		const invalidationPromises = elements.map((element) => {
+			let cloudfrontInvalidate = element;
+			let reference = randomstring.generate(16);
+			let distributionId = cloudfrontInvalidate.distributionId;
+			const containsOriginArray = [].concat(cloudfrontInvalidate.containsOrigin);
+			let stage = cloudfrontInvalidate.stage;
 
-    const invalidationPromises = elements.map(element => {
-      let cloudfrontInvalidate = element;
-      let reference = randomstring.generate(16);
-      let distributionId = cloudfrontInvalidate.distributionId;
-      const containsOrigin = cloudfrontInvalidate.containsOrigin;
-      let stage = cloudfrontInvalidate.stage;
+			if (stage !== undefined && stage !== `${this.serverless.service.provider.stage}`) {
+				return;
+			}
 
-      if (stage !== undefined && stage !== `${this.serverless.service.provider.stage}`) {
-        return;
-      }
+			if (distributionId) {
+				cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
 
-      if (distributionId) {
-        cli.consoleLog(`DistributionId: ${chalk.yellow(distributionId)}`);
+				return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
+			}
+			if (containsOriginArray.length > 0) {
+				cli.consoleLog(`containsOriginArray: ${chalk.yellow(containsOriginArray)}`);
+				this.aws
+					.request('CloudFront', 'listDistributions')
+					.then((data) => {
+						const distributions = data.DistributionList.Items;
+						distributions.forEach((distribution) => {
+							const foundDistribution = distribution.Origins.Items.find((origin) => {
+								return containsOriginArray.includes(origin.DomainName);
+							});
 
-        return this.createInvalidation(distributionId, reference, cloudfrontInvalidate);
-      }
-      if (containsOrigin){
-        cli.consoleLog(`ContainsOrigin: ${chalk.yellow(containsOrigin)}`);
-        this.aws.request('CloudFront', 'listDistributions').then(
-          (data) => {
-            const distributions = data.DistributionList.Items;
-            distributions.array.forEach(distribution => {
-              const foundDistribution = distribution.Origins.Items.find(origin => {
-                return origin.DomainName === containsOrigin;
-              });
+							if (foundDistribution) {
+								cli.consoleLog(
+									`Going to invalidate distributionId: ${chalk.yellow(
+										distribution.Id
+									)}`
+								);
+								return this.createInvalidation(
+									distribution.Id,
+									reference,
+									cloudfrontInvalidate
+								);
+							}
+						});
+					})
+					.catch((err) => {
+						cli.consoleLog(JSON.stringify(err));
+					});
+			}
 
-              if (foundDistribution) {
-                cli.consoleLog(`Going to invalidate distributionId: ${chalk.yellow(distribution.Id)}`);
-                return this.createInvalidation(distribution.Id, reference, cloudfrontInvalidate);
-              }
-          }
-        ).catch(
-          (err) => {
-            cli.consoleLog(JSON.stringify(err));
-          }
-        );
-      });
-    }
+			if (!cloudfrontInvalidate.distributionIdKey) {
+				cli.consoleLog('distributionId, containsOrigin or distributionIdKey is required');
+				return;
+			}
 
-      if (!cloudfrontInvalidate.distributionIdKey) {
-        cli.consoleLog('distributionId, containsOrigin or distributionIdKey is required');
-        return;
-      }
+			cli.consoleLog(
+				`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`
+			);
 
-      cli.consoleLog(`DistributionIdKey: ${chalk.yellow(cloudfrontInvalidate.distributionIdKey)}`);
+			// get the id from the output of stack.
+			const stackName = this.serverless.getProvider('aws').naming.getStackName();
 
-      // get the id from the output of stack.
-      const stackName = this.serverless.getProvider('aws').naming.getStackName()
+			return this.aws
+				.request('CloudFormation', 'describeStacks', { StackName: stackName })
+				.then((result) => {
+					if (result) {
+						const outputs = result.Stacks[0].Outputs;
+						outputs.forEach((output) => {
+							if (output.OutputKey === cloudfrontInvalidate.distributionIdKey) {
+								distributionId = output.OutputValue;
+							}
+						});
+					}
+				})
+				.then(() =>
+					this.createInvalidation(distributionId, reference, cloudfrontInvalidate)
+				)
+				.catch(() => {
+					cli.consoleLog(
+						'Failed to get DistributionId from stack output. Please check your serverless template.'
+					);
+				});
+		});
 
-      return this.aws.request('CloudFormation', 'describeStacks', { StackName: stackName })
-        .then(result => {
-          if (result) {
-            const outputs = result.Stacks[0].Outputs;
-            outputs.forEach(output => {
-              if (output.OutputKey === cloudfrontInvalidate.distributionIdKey) {
-                distributionId = output.OutputValue;
-              }
-            });
-          }
-        })
-        .then(() => this.createInvalidation(distributionId, reference, cloudfrontInvalidate))
-        .catch(() => {
-          cli.consoleLog('Failed to get DistributionId from stack output. Please check your serverless template.');
-        });
-    });
+		return Promise.all(invalidationPromises);
+	}
 
-    return Promise.all(invalidationPromises);
-  }
+	afterDeploy() {
+		const elementsToInvalidate = this.serverless.service.custom.cloudfrontInvalidate.filter(
+			(element) => {
+				if (element.autoInvalidate !== false) {
+					return true;
+				}
 
-  afterDeploy() {
-    const elementsToInvalidate = this.serverless.service.custom.cloudfrontInvalidate
-      .filter((element) => {
-        if (element.autoInvalidate !== false) {
-          return true;
-        }
+				this.serverless.cli.consoleLog(
+					`Will skip invalidation for the distributionId "${
+						element.distributionId || element.distributionIdKey
+					}" as autoInvalidate is set to false.`
+				);
+				return false;
+			}
+		);
 
-        this.serverless.cli.consoleLog(`Will skip invalidation for the distributionId "${element.distributionId || element.distributionIdKey}" as autoInvalidate is set to false.`);
-        return false;
-      });
+		return this.invalidateElements(elementsToInvalidate);
+	}
 
-    return this.invalidateElements(elementsToInvalidate);
-  }
-
-  invalidate() {
-    return this.invalidateElements(this.serverless.service.custom.cloudfrontInvalidate);
-  }
+	invalidate() {
+		return this.invalidateElements(this.serverless.service.custom.cloudfrontInvalidate);
+	}
 }
 
 module.exports = CloudfrontInvalidate;
