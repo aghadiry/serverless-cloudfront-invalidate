@@ -133,7 +133,8 @@ class CloudfrontInvalidate {
             cli.consoleLog(JSON.stringify(err));
           }
         );
-      }
+      });
+    }
 
       if (!cloudfrontInvalidate.distributionIdKey) {
         cli.consoleLog('distributionId, containsOrigin or distributionIdKey is required');
