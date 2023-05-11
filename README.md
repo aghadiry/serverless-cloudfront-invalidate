@@ -1,6 +1,16 @@
-# serverless-cloudfront-invalidate
+# sls-cloudfront-invalidate
 
-Serverless plugin that allows you to invalidate Cloudfront Cache
+Serverless plugin that allows you to invalidate Cloudfront Cache. It was originally created by @aghadiry. You can find the original repository [https://github.com/aghadiry/serverless-cloudfront-invalidate]
+
+I am maintaining this fork of the library, primarily focusing on updating the dependencies.
+
+## Installation
+
+To install this library, you can use npm:
+
+```bash
+npm install [package-name]
+
 
 ## Install
 
