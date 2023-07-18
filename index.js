@@ -6,7 +6,7 @@ const fs = require('fs');
 const https = require('https');
 const proxy = require('proxy-agent');
 
-class CloudfrontInvalidate {
+export default class CloudfrontInvalidate {
 
   constructor(serverless, options) {
     this.serverless = serverless;
@@ -161,5 +161,3 @@ class CloudfrontInvalidate {
     return this.invalidateElements(this.serverless.service.custom.cloudfrontInvalidate);
   }
 }
-
-module.exports = CloudfrontInvalidate;
